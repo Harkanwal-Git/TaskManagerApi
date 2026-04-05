@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using TaskManagerApi.Data;
+using TaskManagerApi.Middleware;
 using TaskManagerApi.Repository;
 using TaskManagerApi.Service;
 
@@ -25,6 +25,8 @@ internal class Program
 
         var app = builder.Build();
         // Configure the HTTP request pipeline.
+        app.UseMiddleware<ExceptionHandlingMiddleware>();
+        app.UseTimingMiddleware();
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -32,9 +34,6 @@ internal class Program
         }
 
         app.UseHttpsRedirection();
-
-
-
         app.MapControllers();
         app.Run();
     }
