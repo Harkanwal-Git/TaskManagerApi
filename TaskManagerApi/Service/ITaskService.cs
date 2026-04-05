@@ -9,4 +9,6 @@ public interface ITaskService
 
     public Task<bool> DeleteTask(Guid taskId);
     public Task<ResponseTaskDto?> UpdateTask(UpdateTaskDto updateTaskDto, Guid taskId);
+
+    public Task<IEnumerable<ResponseTaskDto>> SearchTask(string? title, bool? isCompleted);
 }

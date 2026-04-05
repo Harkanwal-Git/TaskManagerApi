@@ -69,5 +69,11 @@ public class TasksController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<ResponseTaskDto>>> SearchTask([FromQuery] string? title, [FromQuery] bool? isCompleted)
+    {
+        var tasks = await _taskService.SearchTask(title, isCompleted);
 
+        return Ok(tasks);
+    }
 }

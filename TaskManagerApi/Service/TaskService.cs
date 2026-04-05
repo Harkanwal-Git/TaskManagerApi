@@ -45,6 +45,13 @@ public class TaskService : ITaskService
 
         return updatedTaskItem != null ? MapTaskItemToResponseDto(updatedTaskItem) : null;
     }
+
+    public async Task<IEnumerable<ResponseTaskDto>> SearchTask(string? title, bool? isCompleted)
+    {
+        IEnumerable<TaskItem> tasks = await _taskRepository.SearchTask(title, isCompleted);
+
+        return tasks.Select(t => MapTaskItemToResponseDto(t));
+    }
     private ResponseTaskDto MapTaskItemToResponseDto(TaskItem taskItem)
     {
         return new ResponseTaskDto(Id: taskItem.Id,

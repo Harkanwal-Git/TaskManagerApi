@@ -1,4 +1,3 @@
-using System.Data;
 using Dapper;
 using Microsoft.EntityFrameworkCore;
 using TaskManagerApi.Data;
@@ -16,7 +15,7 @@ public class TaskRepository : ITaskRepository
         this._dbContext = dbContext;
         this._connectionFactory = dataConnectionFactory;
     }
-    // private static List<TaskItem> _tasks = new List<TaskItem>();
+
     public async Task<TaskItem> AddTask(TaskItem task)
     {
 
@@ -28,15 +27,6 @@ public class TaskRepository : ITaskRepository
 
     public async Task<bool> DeleteTask(Guid taskId)
     {
-
-        // var task = await _dbContext.Tasks.FindAsync(taskId);
-
-        // if (task == null) return false;
-
-        // _dbContext.Tasks.Remove(task);
-
-        // await _dbContext.SaveChangesAsync();
-        // return true;
 
         var rowsDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId).ExecuteDeleteAsync();
 
@@ -56,21 +46,12 @@ public class TaskRepository : ITaskRepository
 
     public async Task<TaskItem?> UpdateTask(TaskItem task)
     {
-        #region otherapproach
-        // var ogTask = await _dbContext.Tasks.FirstOrDefaultAsync(t => t.Id == task.Id);
-        // if (ogTask == null) return ogTask;
-
-        // ogTask.Title = task.Title;
-        // ogTask.Description = task.Description;
-        // ogTask.IsCompleted = task.IsCompleted;
-
-        // await _dbContext.SaveChangesAsync();
-        // return ogTask;
-        #endregion
         var rowsAffected = await _dbContext.Tasks.Where(t => t.Id == task.Id)
-        .ExecuteUpdateAsync(s => s.SetProperty(t => t.Title, task.Title)
+        .ExecuteUpdateAsync(
+            s => s.SetProperty(t => t.Title, task.Title)
         .SetProperty(t => t.Description, task.Description)
-        .SetProperty(t => t.IsCompleted, task.IsCompleted));
+        .SetProperty(t => t.IsCompleted, task.IsCompleted)
+        );
 
         if (rowsAffected == 0) return null;
         return await _dbContext.Tasks.FindAsync(task.Id);
