@@ -1,4 +1,3 @@
-using System.Data;
 using Microsoft.EntityFrameworkCore;
 using TaskManagerApi.Model;
 
@@ -12,6 +11,8 @@ public class AppDbContext : DbContext
 
     }
     public DbSet<TaskItem> Tasks { get; set; }
+
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,5 +30,23 @@ public class AppDbContext : DbContext
                     .HasDefaultValueSql("GETUTCDATE()");
 
 
+        modelBuilder.Entity<User>()
+        .Property(t => t.Email)
+        .IsRequired()
+        .HasMaxLength(50);
+
+        modelBuilder.Entity<User>()
+        .HasIndex(u => u.Email)
+        .IsUnique();
+
+        modelBuilder.Entity<User>()
+        .Property(u => u.PasswordHash)
+        .IsRequired()
+        .HasMaxLength(100);
+
+        modelBuilder.Entity<User>()
+        .Property(u => u.Role)
+        .HasConversion<string>()
+        .HasMaxLength(20);
     }
 }

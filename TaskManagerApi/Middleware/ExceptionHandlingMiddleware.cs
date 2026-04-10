@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TaskManagerApi.Exceptions;
 
 namespace TaskManagerApi.Middleware;
 
@@ -38,8 +39,9 @@ public class ExceptionHandlingMiddleware
         return ex switch
         {
             ArgumentException => (400, "Bad Request"),
-            UnauthorizedAccessException => (401, "UnAuthorrized"),
+            InvalidCredentialsException => (401, "Invalid Credentials"),
             KeyNotFoundException => (404, "Not Found"),
+            DuplicateEmailException => (409, "Email already exists"),
             _ => (500, "Internal Server Error")
         };
     }
