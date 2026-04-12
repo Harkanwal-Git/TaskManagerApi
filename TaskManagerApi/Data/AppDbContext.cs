@@ -29,6 +29,11 @@ public class AppDbContext : DbContext
                     .Property(t => t.CreatedAt)
                     .HasDefaultValueSql("GETUTCDATE()");
 
+        modelBuilder.Entity<TaskItem>()
+                    .HasOne(t => t.User)
+                    .WithMany(u => u.Tasks)
+                    .HasForeignKey(t => t.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<User>()
         .Property(t => t.Email)

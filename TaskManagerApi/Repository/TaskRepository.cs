@@ -25,28 +25,34 @@ public class TaskRepository : ITaskRepository
         return task;
     }
 
-    public async Task<bool> DeleteTask(Guid taskId)
+    public async Task<bool> DeleteTask(Guid taskId, Guid userId, bool isAdmin)
     {
 
-        var rowsDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId).ExecuteDeleteAsync();
+        // var query = _dbContext.Tasks.Where(t => t.Id == taskId);
+        // if (!isAdmin)
+        //     query = query.Where(t => t.UserId == userId);
+
+        // var rowsDeleted = await query.ExecuteDeleteAsync();
+
+        var rowsDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteDeleteAsync();
 
         return rowsDeleted > 0;
 
     }
 
-    public async Task<IEnumerable<TaskItem>> GetAllTasks()
+    public async Task<IEnumerable<TaskItem>> GetAllTasks(Guid userId, bool isAdmin)
     {
-        return await _dbContext.Tasks.AsNoTracking().ToListAsync();
+        return await _dbContext.Tasks.Where(t => isAdmin || t.UserId == userId).AsNoTracking().ToListAsync();
     }
 
-    public async Task<TaskItem?> GetTaskById(Guid Id)
+    public async Task<TaskItem?> GetTaskById(Guid Id, Guid userId, bool isAdmin)
     {
-        return await _dbContext.Tasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == Id);
+        return await _dbContext.Tasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == Id && (isAdmin || t.UserId == userId));
     }
 
-    public async Task<TaskItem?> UpdateTask(TaskItem task)
+    public async Task<TaskItem?> UpdateTask(TaskItem task, bool isAdmin)
     {
-        var rowsAffected = await _dbContext.Tasks.Where(t => t.Id == task.Id)
+        var rowsAffected = await _dbContext.Tasks.Where(t => t.Id == task.Id && (isAdmin || t.UserId == task.UserId))
         .ExecuteUpdateAsync(
             s => s.SetProperty(t => t.Title, task.Title)
         .SetProperty(t => t.Description, task.Description)
@@ -58,10 +64,16 @@ public class TaskRepository : ITaskRepository
 
     }
 
-    public async Task<IEnumerable<TaskItem>> SearchTask(string? title, bool? isCompleted)
+    public async Task<IEnumerable<TaskItem>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin)
     {
         var sql = "Select * from Tasks WHERE 1=1";
         var parameters = new DynamicParameters();
+
+        if (!isAdmin)
+        {
+            sql += " AND UserId=@UserId";
+            parameters.Add("UserId", userId);
+        }
 
         if (!string.IsNullOrWhiteSpace(title))
         {
@@ -74,6 +86,7 @@ public class TaskRepository : ITaskRepository
             sql += " AND IsCompleted=@IsCompleted";
             parameters.Add("IsCompleted", isCompleted.Value);
         }
+
 
         using var connection = _connectionFactory.CreateConnection();
         return await connection.QueryAsync<TaskItem>(sql, parameters);
