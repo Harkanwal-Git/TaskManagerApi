@@ -13,6 +13,9 @@ public class TaskService : ITaskService
     }
     public async Task<ResponseTaskDto> AddTask(CreateTaskDto createTaskDto, Guid userId, bool isAdmin)
     {
+        if (!isAdmin && createTaskDto.AssignedUserId.HasValue)
+            throw new UnauthorizedAccessException("Only admins can assign tasks to other users");
+
         ResponseTaskDto responseTaskDto;
         var taskAssignee = isAdmin && createTaskDto.AssignedUserId.HasValue ? createTaskDto.AssignedUserId.Value : userId;
         TaskItem taskItem = await _taskRepository.AddTask(MapCreateRequestDtoToTaskItem(createTaskDto, taskAssignee));
@@ -54,7 +57,7 @@ public class TaskService : ITaskService
     private ResponseTaskDto MapTaskItemToResponseDto(TaskItem taskItem)
     {
         return new ResponseTaskDto(Id: taskItem.Id,
-        Title: taskItem.Title, Description: taskItem.Description, IsCompleted: taskItem.IsCompleted, CreatedAt: taskItem.CreatedAt);
+        Title: taskItem.Title, Description: taskItem.Description, IsCompleted: taskItem.IsCompleted, CreatedAt: taskItem.CreatedAt, UserId: taskItem.UserId);
     }
 
     private TaskItem MapCreateRequestDtoToTaskItem(CreateTaskDto createTaskDto, Guid userId)
