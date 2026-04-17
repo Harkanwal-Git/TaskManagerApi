@@ -1,7 +1,8 @@
 namespace TaskManagerApi.Model;
 
-public enum UserRole
+public enum Role
 {
-    Admin,
-    User
+    User = 0,
+    Admin = 1,
+    ReadOnly = 2
 }

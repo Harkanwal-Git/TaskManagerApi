@@ -17,7 +17,6 @@ public class UserRepository : IUserRepository
     }
     public async Task<User> AddUser(User user)
     {
-
         _dbContext.Users.Add(user);
 
         await _dbContext.SaveChangesAsync();
@@ -27,7 +26,7 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetUserByEmail(string email)
     {
-        return await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
+        return await _dbContext.Users.Include(ur => ur.Roles).AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
     }
 
     public async Task<bool> UserExists(string email)

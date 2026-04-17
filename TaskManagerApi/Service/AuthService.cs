@@ -24,7 +24,7 @@ public class AuthService : IAuthService
 
         if (!VerifyPassword(loginRequest.Password, user.PasswordHash)) throw new InvalidCredentialsException();
         (string token, DateTime expiresAt) = GenerateJwtToken(user);
-        return new AuthResponseDto(Token: token, Email: user.Email, Role: user.Role.ToString(), ExpiresAt: expiresAt);
+        return new AuthResponseDto(Token: token, Email: user.Email, Roles: GetUserRoles(user.Roles), ExpiresAt: expiresAt);
 
     }
 
@@ -36,12 +36,20 @@ public class AuthService : IAuthService
         }
         var user = await _userRepository.AddUser(MapRegisterDtoToUser(registerDto));
         (string token, DateTime expiresAt) = GenerateJwtToken(user);
-        return new AuthResponseDto(Token: token, Email: user.Email, Role: user.Role.ToString(), ExpiresAt: expiresAt);
+        return new AuthResponseDto(Token: token, Email: user.Email, Roles: GetUserRoles(user.Roles), ExpiresAt: expiresAt);
     }
 
     private User MapRegisterDtoToUser(RegisterDto registerDto)
     {
-        return new User { Email = registerDto.Email.ToLower(), PasswordHash = HashPassword(registerDto.Password) };
+        User user = new User { Email = registerDto.Email.ToLower(), PasswordHash = HashPassword(registerDto.Password) };
+
+        user.Roles.Add(new UserRole { UserId = user.Id, Role = Role.User });
+        return user;
+    }
+
+    private List<string> GetUserRoles(ICollection<UserRole> userRoles)
+    {
+        return userRoles.Select(ur => ur.Role.ToString()).ToList();
     }
     private string HashPassword(string password)
     {
@@ -57,12 +65,16 @@ public class AuthService : IAuthService
 
     private (string token, DateTime expiresAt) GenerateJwtToken(User user)
     {
-        var claims = new[]
+        var claims = new List<Claim>
         {
         new Claim(ClaimTypes.NameIdentifier,user.Id.ToString()),
-        new Claim(ClaimTypes.Email,user.Email),
-        new Claim(ClaimTypes.Role,user.Role.ToString())
-    };
+        new Claim(ClaimTypes.Email,user.Email)
+        };
+
+        foreach (var role in user.Roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role.Role.ToString()!));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jWTSecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature);

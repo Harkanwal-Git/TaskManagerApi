@@ -14,6 +14,8 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users { get; set; }
 
+    public DbSet<UserRole> UserRoles { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TaskItem>()
@@ -49,8 +51,25 @@ public class AppDbContext : DbContext
         .IsRequired()
         .HasMaxLength(100);
 
-        modelBuilder.Entity<User>()
-        .Property(u => u.Role)
+        // modelBuilder.Entity<User>()
+        // .Property(u => u.Role)
+        // .HasConversion<string>()
+        // .HasMaxLength(20);
+
+        modelBuilder.Entity<UserRole>()
+        .HasOne(ur => ur.User)
+        .WithMany(u => u.Roles)
+        .HasForeignKey(ur => ur.UserId)
+        .HasPrincipalKey(u => u.Id)
+        .OnDelete(DeleteBehavior.Cascade);
+
+
+
+        modelBuilder.Entity<UserRole>()
+        .HasKey(ur => new { ur.UserId, ur.Role });
+
+        modelBuilder.Entity<UserRole>()
+        .Property(ur => ur.Role)
         .HasConversion<string>()
         .HasMaxLength(20);
     }

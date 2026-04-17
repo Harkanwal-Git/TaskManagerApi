@@ -7,8 +7,10 @@ public class User
 
     public required string PasswordHash { get; set; }
 
-    public UserRole Role { get; set; } = UserRole.User;
+    // public Role Role { get; set; } = Role.User;
 
     public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
+
+    public ICollection<UserRole> Roles { get; set; } = new List<UserRole>();
 }
 
