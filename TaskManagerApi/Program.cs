@@ -48,6 +48,8 @@ internal class Program
         builder.Services.AddScoped<ITaskService, TaskService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IUserRepository, UserRepository>();
+        builder.Services.AddScoped<ITagRepository, TagRepository>();
+        builder.Services.AddScoped<ITagService, TagService>();
 
 
 

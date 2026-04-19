@@ -71,12 +71,30 @@ public class TasksController : ControllerBase
     }
 
     [HttpGet("search")]
-    public async Task<ActionResult<IEnumerable<ResponseTaskDto>>> SearchTask([FromQuery] string? title, [FromQuery] bool? isCompleted)
+    public async Task<ActionResult<IEnumerable<ResponseTaskDto>>> SearchTask([FromQuery] string? title, [FromQuery] bool? isCompleted, [FromQuery] string? tagName)
     {
-        var tasks = await _taskService.SearchTask(title, isCompleted, GetLoggedInUser(), User.IsInRole("Admin"));
+        var tasks = await _taskService.SearchTask(title, isCompleted, GetLoggedInUser(), User.IsInRole("Admin"), tagName);
 
         return Ok(tasks);
     }
+
+    [HttpPost("{taskId}/tags/{tagId}")]
+    public async Task<IActionResult> AddTagToTask([FromRoute] Guid taskId, [FromRoute] Guid tagId)
+    {
+        await _taskService.AddTaskTag(taskId, tagId, User.IsInRole("Admin"), GetLoggedInUser());
+        return Created();
+    }
+
+    [HttpDelete("{taskId}/tags/{tagId}")]
+    public async Task<IActionResult> DeleteTagFromTask([FromRoute] Guid taskId, [FromRoute] Guid tagId)
+    {
+        var deleted = await _taskService.RemoveTaskTag(taskId, tagId, User.IsInRole("Admin"), GetLoggedInUser());
+
+        if (!deleted) return NotFound(new ProblemDetails { Status = 404, Title = "No Action happened", Detail = "Task or Tag Id doesnot exist", Instance = Request.Path });
+        return NoContent();
+    }
+
+
 
     private Guid GetLoggedInUser()
     {

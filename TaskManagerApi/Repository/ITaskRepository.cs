@@ -12,5 +12,10 @@ public interface ITaskRepository
 
     public Task<bool> DeleteTask(Guid guid, Guid userId, bool isAdmin);
 
-    public Task<IEnumerable<TaskItem>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin);
+    public Task<IEnumerable<TaskItem>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin, string? tagName);
+
+    public Task AddTaskTag(Guid taskId, Guid TagId);
+
+    public Task<bool> RemoveTaskTag(Guid taskId, Guid tagId, bool isAdmin, Guid userId);
+
 }

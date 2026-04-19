@@ -10,5 +10,9 @@ public interface ITaskService
     public Task<bool> DeleteTask(Guid taskId, Guid userId, bool isAdmin);
     public Task<ResponseTaskDto?> UpdateTask(UpdateTaskDto updateTaskDto, Guid taskId, Guid userId, bool isAdmin);
 
-    public Task<IEnumerable<ResponseTaskDto>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin);
+    public Task<IEnumerable<ResponseTaskDto>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin, string? tagName);
+
+    public Task AddTaskTag(Guid taskId, Guid TagId, bool isAdmin, Guid userId);
+
+    public Task<bool> RemoveTaskTag(Guid taskId, Guid tagId, bool isAdmin, Guid userId);
 }

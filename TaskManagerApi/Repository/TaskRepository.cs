@@ -1,5 +1,6 @@
 using Dapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic;
 using TaskManagerApi.Data;
 using TaskManagerApi.Model;
 
@@ -42,12 +43,12 @@ public class TaskRepository : ITaskRepository
 
     public async Task<IEnumerable<TaskItem>> GetAllTasks(Guid userId, bool isAdmin)
     {
-        return await _dbContext.Tasks.Where(t => isAdmin || t.UserId == userId).AsNoTracking().ToListAsync();
+        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).Where(t => isAdmin || t.UserId == userId).ToListAsync();
     }
 
     public async Task<TaskItem?> GetTaskById(Guid Id, Guid userId, bool isAdmin)
     {
-        return await _dbContext.Tasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == Id && (isAdmin || t.UserId == userId));
+        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).FirstOrDefaultAsync(t => t.Id == Id && (isAdmin || t.UserId == userId));
     }
 
     public async Task<TaskItem?> UpdateTask(TaskItem task, bool isAdmin)
@@ -60,13 +61,14 @@ public class TaskRepository : ITaskRepository
         );
 
         if (rowsAffected == 0) return null;
-        return await _dbContext.Tasks.FindAsync(task.Id);
+        // return await _dbContext.Tasks.FindAsync(task.Id);
 
+        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).FirstOrDefaultAsync(t => t.Id == task.Id);
     }
 
-    public async Task<IEnumerable<TaskItem>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin)
+    public async Task<IEnumerable<TaskItem>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin, string? tagName)
     {
-        var sql = "Select * from Tasks WHERE 1=1";
+        var sql = @"Select * from Tasks WHERE 1=1";
         var parameters = new DynamicParameters();
 
         if (!isAdmin)
@@ -86,9 +88,71 @@ public class TaskRepository : ITaskRepository
             sql += " AND IsCompleted=@IsCompleted";
             parameters.Add("IsCompleted", isCompleted.Value);
         }
+        if (!string.IsNullOrWhiteSpace(tagName))
+        {
+            sql += @" AND EXISTS (
+                    SELECT 1
+                    FROM TaskTags tt
+                    INNER JOIN Tags ta ON tt.TagId = ta.Id
+                    WHERE tt.TaskId = Tasks.Id
+                    AND ta.TagName LIKE @TagName
+                 )";
 
+            parameters.Add("TagName", $"%{tagName}%");
+        }
 
         using var connection = _connectionFactory.CreateConnection();
-        return await connection.QueryAsync<TaskItem>(sql, parameters);
+        // Step 1: Get tasks
+        var tasks = (await connection.QueryAsync<TaskItem>(sql, parameters)).ToList();
+        if (!tasks.Any())
+        {
+            return tasks;
+        }
+
+        var taskIds = tasks.Select(t => t.Id).ToList();
+        var multiSql = @"Select * from TaskTags Where TaskId IN @TaskIds;
+                        Select * from Tags where Id IN (Select TagId from TaskTags Where TaskId IN @TaskIds)";
+
+
+        using var multi = await connection.QueryMultipleAsync(multiSql, new { TaskIds = taskIds });
+
+
+
+        var taskTags = (await multi.ReadAsync<TaskTag>()).ToList();
+        var tags = (await multi.ReadAsync<Tag>()).ToList();
+
+        var tagLookUp = tags.ToDictionary(t => t.Id);
+
+        var taskTagLookUp = taskTags
+                        .GroupBy(tt => tt.TaskId)
+                        .ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var task in tasks)
+        {
+            if (taskTagLookUp.TryGetValue(task.Id, out var tts))
+            {
+
+                task.TaskTags = tts.Select(tt =>
+                {
+                    tt.Tag = tagLookUp[tt.TagId];
+                    return tt;
+                }).ToList();
+            }
+        }
+        return tasks;
+    }
+
+    public async Task AddTaskTag(Guid taskId, Guid tagId)
+    {
+        _dbContext.TaskTags.Add(new TaskTag() { TaskId = taskId, TagId = tagId });
+
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<bool> RemoveTaskTag(Guid taskId, Guid tagId, bool isAdmin, Guid userId)
+    {
+        var rowsDeleted = await _dbContext.TaskTags.Where(tt => tt.TaskId == taskId && tt.TagId == tagId && (isAdmin || tt.TaskItem.UserId == userId)).ExecuteDeleteAsync();
+
+        return rowsDeleted > 0;
     }
 }
