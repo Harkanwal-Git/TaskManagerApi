@@ -155,4 +155,61 @@ public class TaskRepository : ITaskRepository
 
         return rowsDeleted > 0;
     }
+
+    //For learning db transactions
+    public async Task<TaskItem> CreateTaskWithTag(TaskItem task, string tagName, CancellationToken ct)
+    {
+        using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
+
+        try
+        {
+            var tag = new Tag { TagName = tagName };
+            _dbContext.Tags.Add(tag);
+            await _dbContext.SaveChangesAsync(ct);
+
+            task.TaskTags.Add(new TaskTag { TagId = tag.Id });
+            _dbContext.Tasks.Add(task);
+            await _dbContext.SaveChangesAsync(ct);
+
+            await transaction.CommitAsync(ct);
+            return task;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task<TaskItem> CreateTaskWithTag_Dapper(TaskItem task, string tagName, CancellationToken ct)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            var tag = new Tag { TagName = tagName };
+            var insertTagSql = @"Insert into Tags (Id,TagName) Values (@Id, @TagName)";
+
+            var insertedRows = await connection.ExecuteAsync(new CommandDefinition(insertTagSql, tag, transaction, cancellationToken: ct));
+
+            var insertTaskWithTags = @"Insert into Tasks (Id,Title,Description,IsCompleted,CreatedAt,UserId) Values (@Id,@Title,@Description, @IsCompleted,@CreatedAt,@UserId)";
+            var insertedTaskRows = await connection.ExecuteAsync(new CommandDefinition(insertTaskWithTags, task, transaction, cancellationToken: ct));
+
+            var taskTag = new TaskTag { TaskId = task.Id, TagId = tag.Id };
+            var insertTaskTagSql = @"Insert into TaskTags (TaskId,TagId) Values (@TaskId, @TagId)";
+
+            var insertedRowsTasktag = await connection.ExecuteAsync(new CommandDefinition(insertTaskTagSql, taskTag, transaction, cancellationToken: ct));
+
+
+            transaction.Commit();
+            return task;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
 }
