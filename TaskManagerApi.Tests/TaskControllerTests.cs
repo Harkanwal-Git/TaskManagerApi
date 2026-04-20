@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using TaskManagerApi.Controllers;
 using TaskManagerApi.DTO;
+using TaskManagerApi.Model;
 
 namespace TaskManagerApi.Tests;
 
@@ -35,15 +36,15 @@ public class TaskControllerTests
     [Fact]
     public async Task GetAllTasks_WithExistingTasks_Returns200WithTasks()
     {
-        _mockTaskService.Setup(s => s.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((Guid userId, bool isAdmin) => new List<ResponseTaskDto>()
+        _mockTaskService.Setup(s => s.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync((Guid userId, bool isAdmin, CancellationToken ct) => new List<ResponseTaskDto>()
                         {
-                            new ResponseTaskDto(Id:Guid.NewGuid(),Title:"Test Title",Description:"Test Description",CreatedAt:DateTime.UtcNow,UserId:userId,IsCompleted:false),
-                            new ResponseTaskDto(Id:Guid.NewGuid(),Title:"Test Title2",Description:"Test Description2",CreatedAt:DateTime.UtcNow,UserId:userId,IsCompleted:false),
-                            new ResponseTaskDto(Id:Guid.NewGuid(),Title:"Test Title3",Description:"Test Description3",CreatedAt:DateTime.UtcNow,UserId:userId,IsCompleted:false)
+                            new ResponseTaskDto(Id:Guid.NewGuid(),Title:"Test Title",Description:"Test Description",CreatedAt:DateTime.UtcNow,UserId:userId,IsCompleted:false,Tags:new List<ResponseTagDto>(){new ResponseTagDto(TagId:Guid.NewGuid(),TagName:"Test Tag")}),
+                            new ResponseTaskDto(Id:Guid.NewGuid(),Title:"Test Title2",Description:"Test Description2",CreatedAt:DateTime.UtcNow,UserId:userId,IsCompleted:false,Tags:null),
+                            new ResponseTaskDto(Id:Guid.NewGuid(),Title:"Test Title3",Description:"Test Description3",CreatedAt:DateTime.UtcNow,UserId:userId,IsCompleted:false,Tags:new List<ResponseTagDto>())
 
                         });
-        var result = await _taskController.GetAll();
+        var result = await _taskController.GetAll(CancellationToken.None);
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
 
         var tasks = Assert.IsAssignableFrom<IEnumerable<ResponseTaskDto>>(okResult.Value);
@@ -51,23 +52,23 @@ public class TaskControllerTests
 
         Assert.NotEmpty(tasks);
 
-        _mockTaskService.Verify(s => s.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
     public async Task AddTask_WithValidInput_Returns201WithCreatedTask()
     {
-        _mockTaskService.Setup(s => s.AddTask(It.IsAny<CreateTaskDto>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((CreateTaskDto createTask, Guid userId, bool isAdmin) => new ResponseTaskDto(
-                            Id: Guid.NewGuid(), Title: createTask.Title, Description: createTask.Description, CreatedAt: DateTime.UtcNow, userId, false)
+        _mockTaskService.Setup(s => s.AddTask(It.IsAny<CreateTaskDto>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync((CreateTaskDto createTask, Guid userId, bool isAdmin, CancellationToken ct) => new ResponseTaskDto(
+                            Id: Guid.NewGuid(), Title: createTask.Title, Description: createTask.Description, CreatedAt: DateTime.UtcNow, userId, false, Tags: null)
                             );
         CreateTaskDto createTaskDto = new(Title: "Test", Description: "Test Description");
-        var result = await _taskController.AddTask(createTaskDto);
+        var result = await _taskController.AddTask(createTaskDto, CancellationToken.None);
 
         var CreatedAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
         var task = Assert.IsAssignableFrom<ResponseTaskDto>(CreatedAtActionResult.Value);
 
-        _mockTaskService.Verify(s => s.AddTask(It.IsAny<CreateTaskDto>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.AddTask(It.IsAny<CreateTaskDto>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
@@ -75,15 +76,15 @@ public class TaskControllerTests
     {
         Guid capturedUserId = default;
         bool capturedIsAdmin = false;
-        _mockTaskService.Setup(s => s.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>()))
-        .Callback<Guid, bool>((userId, isAdmin) =>
+        _mockTaskService.Setup(s => s.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+        .Callback<Guid, bool, CancellationToken>((userId, isAdmin, ct) =>
         {
             capturedUserId = userId;
             capturedIsAdmin = isAdmin;
         })
                         .ReturnsAsync(new List<ResponseTaskDto>());
 
-        var result = await _taskController.GetAll();
+        var result = await _taskController.GetAll(CancellationToken.None);
 
         var okObjectResult = Assert.IsType<OkObjectResult>(result.Result);
 
@@ -93,19 +94,19 @@ public class TaskControllerTests
         Assert.True(capturedIsAdmin);
         Assert.Empty(tasks);
 
-        _mockTaskService.Verify(s => s.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
     public async Task GetTaskById_WithNonExistingId_Returns404()
     {
-        _mockTaskService.Setup(s => s.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((Guid guid, Guid userId, bool isAdmin) => null);
+        _mockTaskService.Setup(s => s.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync((ResponseTaskDto?)null);
 
-        var result = await _taskController.GetById(Guid.NewGuid());
+        var result = await _taskController.GetById(Guid.NewGuid(), CancellationToken.None);
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
 
-        _mockTaskService.Verify(s => s.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
@@ -114,18 +115,18 @@ public class TaskControllerTests
         Guid capturedTaskId = default;
         Guid capturedUserId = default;
         bool capturedIsAdmin = false;
-        _mockTaskService.Setup(s => s.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-        .Callback<Guid, Guid, bool>((taskId, userId, isAdmin) =>
+        _mockTaskService.Setup(s => s.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+        .Callback<Guid, Guid, bool, CancellationToken>((taskId, userId, isAdmin, ct) =>
         {
             capturedTaskId = taskId;
             capturedUserId = userId;
             capturedIsAdmin = isAdmin;
 
         })
-                        .ReturnsAsync((Guid guid, Guid userId, bool isAdmin) => new ResponseTaskDto(Id: guid, Title: "title", Description: "Description", CreatedAt: DateTime.UtcNow, userId, false));
+                        .ReturnsAsync((Guid guid, Guid userId, bool isAdmin, CancellationToken ct) => new ResponseTaskDto(Id: guid, Title: "title", Description: "Description", CreatedAt: DateTime.UtcNow, userId, false, Tags: null));
 
         Guid guid = Guid.NewGuid();
-        var result = await _taskController.GetById(guid);
+        var result = await _taskController.GetById(guid, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var task = Assert.IsAssignableFrom<ResponseTaskDto>(okResult.Value);
@@ -135,68 +136,68 @@ public class TaskControllerTests
         Assert.Equal(_expectedUserId, capturedUserId);
         Assert.True(capturedIsAdmin);
 
-        _mockTaskService.Verify(s => s.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
     public async Task UpdateTask_WithValidId_Return200WithUpdatedTask()
     {
-        _mockTaskService.Setup(s => s.UpdateTask(It.IsAny<UpdateTaskDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((UpdateTaskDto updateTaskDto, Guid guid, Guid userId, bool isAdmin) => new ResponseTaskDto(Id: guid, Title: updateTaskDto.Title, Description: updateTaskDto.Description, CreatedAt: DateTime.UtcNow, IsCompleted: updateTaskDto.IsCompleted, UserId: Guid.NewGuid()));
+        _mockTaskService.Setup(s => s.UpdateTask(It.IsAny<UpdateTaskDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync((UpdateTaskDto updateTaskDto, Guid guid, Guid userId, bool isAdmin, CancellationToken ct) => new ResponseTaskDto(Id: guid, Title: updateTaskDto.Title, Description: updateTaskDto.Description, CreatedAt: DateTime.UtcNow, IsCompleted: updateTaskDto.IsCompleted, UserId: Guid.NewGuid(), Tags: null));
 
         var taskId = Guid.NewGuid();
-        var result = await _taskController.UpdateTask(new UpdateTaskDto("Test", "Testing", true), taskId);
+        var result = await _taskController.UpdateTask(new UpdateTaskDto("Test", "Testing", true), taskId, CancellationToken.None);
 
         var okObjectResult = Assert.IsType<OkObjectResult>(result.Result);
         var task = Assert.IsAssignableFrom<ResponseTaskDto>(okObjectResult.Value);
 
         Assert.Equal(taskId, task.Id);
-        _mockTaskService.Verify(s => s.UpdateTask(It.IsAny<UpdateTaskDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.UpdateTask(It.IsAny<UpdateTaskDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
 
     }
 
     [Fact]
     public async Task UpdateTask_WithInvalidId_Return404NotFound()
     {
-        _mockTaskService.Setup(s => s.UpdateTask(It.IsAny<UpdateTaskDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((UpdateTaskDto updateTaskDto, Guid guid, Guid userId, bool isAdmin) => null);
+        _mockTaskService.Setup(s => s.UpdateTask(It.IsAny<UpdateTaskDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync((ResponseTaskDto?)null);
 
         var taskId = Guid.NewGuid();
-        var result = await _taskController.UpdateTask(new UpdateTaskDto("Test", "Testing", true), taskId);
+        var result = await _taskController.UpdateTask(new UpdateTaskDto("Test", "Testing", true), taskId, CancellationToken.None);
 
         var notFoundObjectResult = Assert.IsType<NotFoundObjectResult>(result.Result);
 
-        _mockTaskService.Verify(s => s.UpdateTask(It.IsAny<UpdateTaskDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.UpdateTask(It.IsAny<UpdateTaskDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
 
     }
 
     [Fact]
     public async Task DeleteTask_WithInvalidId_Return404NotFound()
     {
-        _mockTaskService.Setup(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((Guid guid, Guid userId, bool isAdmin) => false);
+        _mockTaskService.Setup(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync(false);
 
         var taskId = Guid.NewGuid();
-        var result = await _taskController.DeleteTask(taskId);
+        var result = await _taskController.DeleteTask(taskId, CancellationToken.None);
 
         var notFoundObjectResult = Assert.IsType<NotFoundObjectResult>(result);
 
-        _mockTaskService.Verify(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
 
     }
 
     [Fact]
     public async Task DeleteTask_WithvalidId_Return204NoContent()
     {
-        _mockTaskService.Setup(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((Guid guid, Guid userId, bool isAdmin) => true);
+        _mockTaskService.Setup(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync(true);
 
         var taskId = Guid.NewGuid();
-        var result = await _taskController.DeleteTask(taskId);
+        var result = await _taskController.DeleteTask(taskId, CancellationToken.None);
 
         var noContentResult = Assert.IsType<NoContentResult>(result);
 
-        _mockTaskService.Verify(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockTaskService.Verify(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
 
     }
 

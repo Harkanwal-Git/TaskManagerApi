@@ -10,41 +10,43 @@ namespace TaskManagerApi.Tests;
 public class TaskServiceTests
 {
     private readonly Mock<ITaskRepository> _mockRepository;
+    private readonly Mock<ITagRepository> _mockTagRepository;
     private readonly TaskService _taskService;
     public TaskServiceTests()
     {
         _mockRepository = new();
-        _taskService = new TaskService(_mockRepository.Object);
+        _mockTagRepository = new();
+        _taskService = new TaskService(_mockRepository.Object, _mockTagRepository.Object);
     }
     [Fact]
     public async Task AddTask_WithValidInputs_ReturnsCreatedTask()
     {
         CreateTaskDto createTaskDto = new(Title: "Test Task", Description: "Test Task Description");
-        _mockRepository.Setup(r => r.AddTask(It.IsAny<TaskItem>()))
-                        .ReturnsAsync((TaskItem task) => task
+        _mockRepository.Setup(r => r.AddTask(It.IsAny<TaskItem>(), CancellationToken.None))
+                        .ReturnsAsync((TaskItem task, CancellationToken ct) => task
                     );
 
-        var result = await _taskService.AddTask(createTaskDto, Guid.NewGuid(), false);
+        var result = await _taskService.AddTask(createTaskDto, Guid.NewGuid(), false, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(createTaskDto.Title, result.Title);
 
-        _mockRepository.Verify(s => s.AddTask(It.IsAny<TaskItem>()), Times.Once);
+        _mockRepository.Verify(s => s.AddTask(It.IsAny<TaskItem>(), CancellationToken.None), Times.Once);
     }
     [Fact]
     public async Task AddTask_AsAdmin_WithAssignedUserId_AssignsToSpecifiedUser()
     {
         Guid assignedUserId = Guid.NewGuid();
         CreateTaskDto createTaskDto = new(Title: "Test Task", Description: "Test Task Description", AssignedUserId: assignedUserId);
-        _mockRepository.Setup(r => r.AddTask(It.IsAny<TaskItem>()))
-                        .ReturnsAsync((TaskItem task) => task);
+        _mockRepository.Setup(r => r.AddTask(It.IsAny<TaskItem>(), CancellationToken.None))
+                        .ReturnsAsync((TaskItem task, CancellationToken ct) => task);
 
-        var result = await _taskService.AddTask(createTaskDto, Guid.NewGuid(), true);
+        var result = await _taskService.AddTask(createTaskDto, Guid.NewGuid(), true, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(createTaskDto.Title, result.Title);
         Assert.Equal(assignedUserId, result.UserId);
-        _mockRepository.Verify(r => r.AddTask(It.IsAny<TaskItem>()), Times.Once);
+        _mockRepository.Verify(r => r.AddTask(It.IsAny<TaskItem>(), CancellationToken.None), Times.Once);
     }
     [Fact]
     public async Task AddTask_AsRegularUser_WithAssignedUserId_ThrowsUnauthorized()
@@ -52,13 +54,13 @@ public class TaskServiceTests
         Guid assignedUserId = Guid.NewGuid();
         CreateTaskDto createTaskDto = new(Title: "Test Task", Description: "Test Task Description", AssignedUserId: assignedUserId);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await _taskService.AddTask(createTaskDto, Guid.NewGuid(), false));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await _taskService.AddTask(createTaskDto, Guid.NewGuid(), false, CancellationToken.None));
     }
 
     [Fact]
     public async Task GetAllTasks_ReturnsIEnumerableTasks()
     {
-        _mockRepository.Setup(r => r.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>()))
+        _mockRepository.Setup(r => r.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
         .ReturnsAsync(new List<TaskItem>()
         {
             new TaskItem(){Title="Test",Description="test description",UserId=Guid.NewGuid()},
@@ -66,33 +68,33 @@ public class TaskServiceTests
             new TaskItem(){Title="Test3",Description="test description3",UserId=Guid.NewGuid()},
         });
 
-        var result = await _taskService.GetAllTasks(Guid.NewGuid(), true);
+        var result = await _taskService.GetAllTasks(Guid.NewGuid(), true, CancellationToken.None);
 
         Assert.NotEmpty(result);
-        _mockRepository.Verify(r => r.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockRepository.Verify(r => r.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllTasks_WhenEmpty_ReturnsEmptyList()
     {
         // Given
-        _mockRepository.Setup(r => r.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>()))
+        _mockRepository.Setup(r => r.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                         .ReturnsAsync(new List<TaskItem>());
         // When
-        var result = await _taskService.GetAllTasks(Guid.NewGuid(), false);
+        var result = await _taskService.GetAllTasks(Guid.NewGuid(), false, CancellationToken.None);
         // Then
 
         Assert.NotNull(result);
         Assert.Empty(result);
 
-        _mockRepository.Verify(r => r.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockRepository.Verify(r => r.GetAllTasks(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetTasksById_WithExistingIdReturnsTask()
     {
-        _mockRepository.Setup(r => r.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((Guid id, Guid userId, bool isAdmin) => new TaskItem
+        _mockRepository.Setup(r => r.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync((Guid id, Guid userId, bool isAdmin, CancellationToken ct) => new TaskItem
                         {
                             Id = id,
                             Title = "title",
@@ -100,80 +102,80 @@ public class TaskServiceTests
                             UserId = userId
                         });
         var inputId = Guid.NewGuid();
-        var result = await _taskService.GetTaskById(inputId, Guid.NewGuid(), false);
+        var result = await _taskService.GetTaskById(inputId, Guid.NewGuid(), false, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(inputId, result.Id);
 
-        _mockRepository.Verify(r => r.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockRepository.Verify(r => r.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
     [Fact]
     public async Task GetTasksById_WithNonExistingIdReturnsNull()
     {
-        _mockRepository.Setup(r => r.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                               .ReturnsAsync((Guid id, Guid userId, bool isAdmin) => null);
+        _mockRepository.Setup(r => r.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                               .ReturnsAsync((TaskItem?)null);
         var inputId = Guid.NewGuid();
-        var result = await _taskService.GetTaskById(inputId, Guid.NewGuid(), false);
+        var result = await _taskService.GetTaskById(inputId, Guid.NewGuid(), false, CancellationToken.None);
 
         Assert.Null(result);
 
-        _mockRepository.Verify(r => r.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockRepository.Verify(r => r.GetTaskById(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
     public async Task UpdateTask_WithValidId_ReturnsUpdatedTask()
     {
-        _mockRepository.Setup(r => r.UpdateTask(It.IsAny<TaskItem>(), It.IsAny<bool>()))
-                               .ReturnsAsync((TaskItem taskItem, bool isAdmin) => taskItem);
+        _mockRepository.Setup(r => r.UpdateTask(It.IsAny<TaskItem>(), It.IsAny<bool>(), CancellationToken.None))
+                               .ReturnsAsync((TaskItem taskItem, bool isAdmin, CancellationToken ct) => taskItem);
         var inputId = Guid.NewGuid();
-        var result = await _taskService.UpdateTask(new UpdateTaskDto(Title: "Test", Description: "Testing", IsCompleted: true), inputId, Guid.NewGuid(), false);
+        var result = await _taskService.UpdateTask(new UpdateTaskDto(Title: "Test", Description: "Testing", IsCompleted: true), inputId, Guid.NewGuid(), false, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(inputId, result.Id);
 
-        _mockRepository.Verify(r => r.UpdateTask(It.IsAny<TaskItem>(), It.IsAny<bool>()), Times.Once);
+        _mockRepository.Verify(r => r.UpdateTask(It.IsAny<TaskItem>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
     public async Task UpdateTask_WithInValidId_ReturnsNull()
     {
-        _mockRepository.Setup(r => r.UpdateTask(It.IsAny<TaskItem>(), It.IsAny<bool>()))
-                               .ReturnsAsync((TaskItem taskItem, bool isAdmin) => null);
+        _mockRepository.Setup(r => r.UpdateTask(It.IsAny<TaskItem>(), It.IsAny<bool>(), CancellationToken.None))
+                               .ReturnsAsync(default(TaskItem));
         var inputId = Guid.NewGuid();
-        var result = await _taskService.UpdateTask(new UpdateTaskDto(Title: "Test", Description: "Testing", IsCompleted: true), inputId, Guid.NewGuid(), false);
+        var result = await _taskService.UpdateTask(new UpdateTaskDto(Title: "Test", Description: "Testing", IsCompleted: true), inputId, Guid.NewGuid(), false, CancellationToken.None);
 
         Assert.Null(result);
 
-        _mockRepository.Verify(r => r.UpdateTask(It.IsAny<TaskItem>(), It.IsAny<bool>()), Times.Once);
+        _mockRepository.Verify(r => r.UpdateTask(It.IsAny<TaskItem>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
     public async Task DeleteTask_WithInvalidId_ReturnFalse()
     {
-        _mockRepository.Setup(r => r.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((Guid guid, Guid userId, bool isAdmin) => false);
+        _mockRepository.Setup(r => r.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync(false);
 
         var taskId = Guid.NewGuid();
-        var result = await _taskService.DeleteTask(taskId, Guid.NewGuid(), false);
+        var result = await _taskService.DeleteTask(taskId, Guid.NewGuid(), false, CancellationToken.None);
 
         Assert.False(result);
 
-        _mockRepository.Verify(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockRepository.Verify(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
 
     }
 
     [Fact]
     public async Task DeleteTask_WithvalidId_ReturnTrue()
     {
-        _mockRepository.Setup(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()))
-                        .ReturnsAsync((Guid guid, Guid userId, bool isAdmin) => true);
+        _mockRepository.Setup(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None))
+                        .ReturnsAsync(true);
 
         var taskId = Guid.NewGuid();
-        var result = await _taskService.DeleteTask(taskId, Guid.NewGuid(), false);
+        var result = await _taskService.DeleteTask(taskId, Guid.NewGuid(), false, CancellationToken.None);
 
         Assert.True(result);
 
-        _mockRepository.Verify(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>()), Times.Once);
+        _mockRepository.Verify(s => s.DeleteTask(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), CancellationToken.None), Times.Once);
 
     }
 
