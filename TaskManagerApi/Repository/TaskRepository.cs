@@ -17,16 +17,16 @@ public class TaskRepository : ITaskRepository
         this._connectionFactory = dataConnectionFactory;
     }
 
-    public async Task<TaskItem> AddTask(TaskItem task)
+    public async Task<TaskItem> AddTask(TaskItem task, CancellationToken ct)
     {
 
         _dbContext.Tasks.Add(task);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(ct);
 
         return task;
     }
 
-    public async Task<bool> DeleteTask(Guid taskId, Guid userId, bool isAdmin)
+    public async Task<bool> DeleteTask(Guid taskId, Guid userId, bool isAdmin, CancellationToken ct)
     {
 
         // var query = _dbContext.Tasks.Where(t => t.Id == taskId);
@@ -35,38 +35,38 @@ public class TaskRepository : ITaskRepository
 
         // var rowsDeleted = await query.ExecuteDeleteAsync();
 
-        var rowsDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteDeleteAsync();
+        var rowsDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteDeleteAsync(ct);
 
         return rowsDeleted > 0;
 
     }
 
-    public async Task<IEnumerable<TaskItem>> GetAllTasks(Guid userId, bool isAdmin)
+    public async Task<IEnumerable<TaskItem>> GetAllTasks(Guid userId, bool isAdmin, CancellationToken ct)
     {
-        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).Where(t => isAdmin || t.UserId == userId).ToListAsync();
+        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).Where(t => isAdmin || t.UserId == userId).ToListAsync(ct);
     }
 
-    public async Task<TaskItem?> GetTaskById(Guid Id, Guid userId, bool isAdmin)
+    public async Task<TaskItem?> GetTaskById(Guid Id, Guid userId, bool isAdmin, CancellationToken ct)
     {
-        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).FirstOrDefaultAsync(t => t.Id == Id && (isAdmin || t.UserId == userId));
+        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).FirstOrDefaultAsync(t => t.Id == Id && (isAdmin || t.UserId == userId), ct);
     }
 
-    public async Task<TaskItem?> UpdateTask(TaskItem task, bool isAdmin)
+    public async Task<TaskItem?> UpdateTask(TaskItem task, bool isAdmin, CancellationToken ct)
     {
         var rowsAffected = await _dbContext.Tasks.Where(t => t.Id == task.Id && (isAdmin || t.UserId == task.UserId))
         .ExecuteUpdateAsync(
             s => s.SetProperty(t => t.Title, task.Title)
         .SetProperty(t => t.Description, task.Description)
         .SetProperty(t => t.IsCompleted, task.IsCompleted)
-        );
+       , ct);
 
         if (rowsAffected == 0) return null;
         // return await _dbContext.Tasks.FindAsync(task.Id);
 
-        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).FirstOrDefaultAsync(t => t.Id == task.Id);
+        return await _dbContext.Tasks.AsNoTracking().Include(t => t.TaskTags).ThenInclude(tt => tt.Tag).FirstOrDefaultAsync(t => t.Id == task.Id, ct);
     }
 
-    public async Task<IEnumerable<TaskItem>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin, string? tagName)
+    public async Task<IEnumerable<TaskItem>> SearchTask(string? title, bool? isCompleted, Guid userId, bool isAdmin, string? tagName, CancellationToken ct)
     {
         var sql = @"Select * from Tasks WHERE 1=1";
         var parameters = new DynamicParameters();
@@ -103,7 +103,7 @@ public class TaskRepository : ITaskRepository
 
         using var connection = _connectionFactory.CreateConnection();
         // Step 1: Get tasks
-        var tasks = (await connection.QueryAsync<TaskItem>(sql, parameters)).ToList();
+        var tasks = (await connection.QueryAsync<TaskItem>(new CommandDefinition(sql, parameters, cancellationToken: ct))).ToList();
         if (!tasks.Any())
         {
             return tasks;
@@ -114,7 +114,7 @@ public class TaskRepository : ITaskRepository
                         Select * from Tags where Id IN (Select TagId from TaskTags Where TaskId IN @TaskIds)";
 
 
-        using var multi = await connection.QueryMultipleAsync(multiSql, new { TaskIds = taskIds });
+        using var multi = await connection.QueryMultipleAsync(new CommandDefinition(multiSql, new { TaskIds = taskIds }, cancellationToken: ct));
 
 
 
@@ -142,16 +142,16 @@ public class TaskRepository : ITaskRepository
         return tasks;
     }
 
-    public async Task AddTaskTag(Guid taskId, Guid tagId)
+    public async Task AddTaskTag(Guid taskId, Guid tagId, CancellationToken ct)
     {
         _dbContext.TaskTags.Add(new TaskTag() { TaskId = taskId, TagId = tagId });
 
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> RemoveTaskTag(Guid taskId, Guid tagId, bool isAdmin, Guid userId)
+    public async Task<bool> RemoveTaskTag(Guid taskId, Guid tagId, bool isAdmin, Guid userId, CancellationToken ct)
     {
-        var rowsDeleted = await _dbContext.TaskTags.Where(tt => tt.TaskId == taskId && tt.TagId == tagId && (isAdmin || tt.TaskItem.UserId == userId)).ExecuteDeleteAsync();
+        var rowsDeleted = await _dbContext.TaskTags.Where(tt => tt.TaskId == taskId && tt.TagId == tagId && (isAdmin || tt.TaskItem.UserId == userId)).ExecuteDeleteAsync(cancellationToken: ct);
 
         return rowsDeleted > 0;
     }

@@ -13,27 +13,27 @@ public class TagService : ITagService
         _tagRepository = tagRepository;
 
     }
-    public async Task<ResponseTagDto> AddTag(string tagName)
+    public async Task<ResponseTagDto> AddTag(string tagName, CancellationToken ct)
     {
-        var tag = await _tagRepository.AddTag(MapTagNameToTagModel(tagName));
+        var tag = await _tagRepository.AddTag(MapTagNameToTagModel(tagName), ct);
 
         return MapTagToResponseTagDto(tag);
     }
 
-    public async Task<bool> DeleteTag(Guid tagId)
+    public async Task<bool> DeleteTag(Guid tagId, CancellationToken ct)
     {
-        return await _tagRepository.DeleteTag(tagId);
+        return await _tagRepository.DeleteTag(tagId, ct);
     }
 
-    public async Task<IEnumerable<ResponseTagDto>> GetTags()
+    public async Task<IEnumerable<ResponseTagDto>> GetTags(CancellationToken ct)
     {
-        var tags = await _tagRepository.GetTags();
+        var tags = await _tagRepository.GetTags(ct);
         return tags.Select(t => MapTagToResponseTagDto(t));
     }
 
-    public async Task<IEnumerable<ResponseTagDto>> GetTagsForTask(Guid taskId)
+    public async Task<IEnumerable<ResponseTagDto>> GetTagsForTask(Guid taskId, CancellationToken ct)
     {
-        var tags = await _tagRepository.GetTagsForTask(taskId);
+        var tags = await _tagRepository.GetTagsForTask(taskId, ct);
         return tags.Select(t => MapTagToResponseTagDto(t));
     }
 

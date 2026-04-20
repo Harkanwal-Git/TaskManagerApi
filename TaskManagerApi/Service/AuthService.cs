@@ -18,9 +18,9 @@ public class AuthService : IAuthService
         this._jWTSecretKey = configuration.GetRequiredSection("JWTSecret:SecretKey").Value ?? throw new InvalidOperationException("No JWT Secret found");
         this._userRepository = userRepository;
     }
-    public async Task<AuthResponseDto> LoginUser(LoginDto loginRequest)
+    public async Task<AuthResponseDto> LoginUser(LoginDto loginRequest, CancellationToken ct)
     {
-        var user = await _userRepository.GetUserByEmail(loginRequest.Email) ?? throw new KeyNotFoundException();
+        var user = await _userRepository.GetUserByEmail(loginRequest.Email, ct) ?? throw new KeyNotFoundException();
 
         if (!VerifyPassword(loginRequest.Password, user.PasswordHash)) throw new InvalidCredentialsException();
         (string token, DateTime expiresAt) = GenerateJwtToken(user);
@@ -28,13 +28,13 @@ public class AuthService : IAuthService
 
     }
 
-    public async Task<AuthResponseDto> RegisterUser(RegisterDto registerDto)
+    public async Task<AuthResponseDto> RegisterUser(RegisterDto registerDto, CancellationToken ct)
     {
-        if (await _userRepository.UserExists(registerDto.Email))
+        if (await _userRepository.UserExists(registerDto.Email, ct))
         {
             throw new DuplicateEmailException(registerDto.Email);
         }
-        var user = await _userRepository.AddUser(MapRegisterDtoToUser(registerDto));
+        var user = await _userRepository.AddUser(MapRegisterDtoToUser(registerDto), ct);
         (string token, DateTime expiresAt) = GenerateJwtToken(user);
         return new AuthResponseDto(Token: token, Email: user.Email, Roles: GetUserRoles(user.Roles), ExpiresAt: expiresAt);
     }
