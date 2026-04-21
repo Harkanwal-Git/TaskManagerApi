@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Serilog;
 using TaskManagerApi.Data;
 using TaskManagerApi.Middleware;
 using TaskManagerApi.Repository;
@@ -10,7 +11,10 @@ internal class Program
     private static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
+        builder.Host.UseSerilog((context, loggerConfiguration) =>
+        {
+            loggerConfiguration.ReadFrom.Configuration(context.Configuration);
+        });
         // Add services to the container.
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddJWTAuthentication(builder.Configuration);
@@ -59,6 +63,7 @@ internal class Program
         builder.Services.AddSingleton<IDataConnectionFactory, SQLConnectionFactory>();
 
         var app = builder.Build();
+        app.UseSerilogRequestLogging();
         // Configure the HTTP request pipeline.
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         app.UseTimingMiddleware();

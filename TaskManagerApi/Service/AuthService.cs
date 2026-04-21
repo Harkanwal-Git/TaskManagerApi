@@ -13,17 +13,24 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly string _jWTSecretKey;
-    public AuthService(IUserRepository userRepository, IConfiguration configuration)
+
+    private readonly ILogger<AuthService> _logger;
+    public AuthService(IUserRepository userRepository, IConfiguration configuration, ILogger<AuthService> logger)
     {
         this._jWTSecretKey = configuration.GetRequiredSection("JWTSecret:SecretKey").Value ?? throw new InvalidOperationException("No JWT Secret found");
         this._userRepository = userRepository;
+        this._logger = logger;
     }
     public async Task<AuthResponseDto> LoginUser(LoginDto loginRequest, CancellationToken ct)
     {
-        var user = await _userRepository.GetUserByEmail(loginRequest.Email, ct) ?? throw new KeyNotFoundException();
+        _logger.LogInformation("User login attempt received");
+        var user = await _userRepository.GetUserByEmail(loginRequest.Email, ct);
+        if (user == null) { _logger.LogWarning("Login failed for user as no registered user found."); throw new KeyNotFoundException(); }
 
-        if (!VerifyPassword(loginRequest.Password, user.PasswordHash)) throw new InvalidCredentialsException();
+        if (!VerifyPassword(loginRequest.Password, user.PasswordHash)) { _logger.LogWarning("Login failed for user"); throw new InvalidCredentialsException(); }
+
         (string token, DateTime expiresAt) = GenerateJwtToken(user);
+        _logger.LogInformation("Login success for user {UserId}", user.Id);
         return new AuthResponseDto(Token: token, Email: user.Email, Roles: GetUserRoles(user.Roles), ExpiresAt: expiresAt);
 
     }
@@ -32,10 +39,13 @@ public class AuthService : IAuthService
     {
         if (await _userRepository.UserExists(registerDto.Email, ct))
         {
+            _logger.LogWarning("User with email already registered.");
             throw new DuplicateEmailException(registerDto.Email);
         }
         var user = await _userRepository.AddUser(MapRegisterDtoToUser(registerDto), ct);
         (string token, DateTime expiresAt) = GenerateJwtToken(user);
+
+        _logger.LogInformation("User: {UserId} registered and JWT token generated", user.Id);
         return new AuthResponseDto(Token: token, Email: user.Email, Roles: GetUserRoles(user.Roles), ExpiresAt: expiresAt);
     }
 
