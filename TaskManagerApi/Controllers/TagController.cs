@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskManagerApi.DTO;
@@ -26,8 +27,8 @@ public class TagController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<ResponseTagDto>> AddTag([FromBody] string tagName, CancellationToken ct)
-    {  
+    public async Task<ActionResult<ResponseTagDto>> AddTag([FromBody][Required] string tagName, CancellationToken ct)
+    {
         var tag = await _tagService.AddTag(tagName, ct);
 
         return Created("", tag);
