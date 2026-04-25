@@ -35,9 +35,11 @@ public class TaskRepository : ITaskRepository
 
         // var rowsDeleted = await query.ExecuteDeleteAsync();
 
-        var rowsDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteDeleteAsync(ct);
+        // var rowsDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteDeleteAsync(ct);
 
-        return rowsDeleted > 0;
+        var rowsSoftDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteUpdateAsync(t => t.SetProperty(t => t.IsDeleted, true));
+
+        return rowsSoftDeleted > 0;
 
     }
 

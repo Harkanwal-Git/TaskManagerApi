@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using TaskManagerApi.Exceptions;
 
 namespace TaskManagerApi.Middleware;
@@ -42,6 +44,7 @@ public class ExceptionHandlingMiddleware
             InvalidCredentialsException => (401, "Invalid Credentials"),
             KeyNotFoundException => (404, "Not Found"),
             DuplicateEmailException => (409, "Email already exists"),
+            DbUpdateException dbEx when dbEx.InnerException is SqlException sqlEx && sqlEx.Number == 547 => (400, "Invalid reference - related entity doesnot exist"),
             _ => (500, "Internal Server Error")
         };
     }

@@ -25,7 +25,7 @@ public class TagServiceTests
     {
 
         // Given
-        Tag capturedTag = default;
+        Tag capturedTag = default!;
         CancellationToken capturedCT = default;
         _mockTagRepository.Setup(tr => tr.AddTag(It.IsAny<Tag>(), It.IsAny<CancellationToken>()))
                             .Callback<Tag, CancellationToken>((tag, ct) =>

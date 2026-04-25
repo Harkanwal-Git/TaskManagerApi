@@ -41,6 +41,13 @@ public class AppDbContext : DbContext
                     .HasForeignKey(t => t.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<TaskItem>()
+                    .Property(t => t.IsDeleted)
+                    .HasDefaultValue(false);
+
+        modelBuilder.Entity<TaskItem>()
+                    .HasQueryFilter(t => !t.IsDeleted);
+
         modelBuilder.Entity<User>()
         .Property(t => t.Email)
         .IsRequired()
@@ -104,5 +111,8 @@ public class AppDbContext : DbContext
         .WithMany(t => t.TaskTags)
         .HasForeignKey(tt => tt.TagId)
         .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TaskTag>()
+                    .HasQueryFilter(tt => !tt.TaskItem.IsDeleted);
     }
 }
