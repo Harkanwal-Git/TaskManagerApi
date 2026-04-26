@@ -1,6 +1,6 @@
 namespace TaskManagerApi.Model;
 
-public class User
+public class User : BaseEntity
 {
     public Guid Id { get; init; } = Guid.NewGuid();
     public required string Email { get; set; }

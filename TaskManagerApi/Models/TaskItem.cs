@@ -1,6 +1,6 @@
 namespace TaskManagerApi.Model
 {
-    public class TaskItem
+    public class TaskItem : BaseEntity
     {
 
         public Guid Id { get; init; } = Guid.NewGuid();

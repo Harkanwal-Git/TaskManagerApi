@@ -37,7 +37,8 @@ public class TaskRepository : ITaskRepository
 
         // var rowsDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteDeleteAsync(ct);
 
-        var rowsSoftDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteUpdateAsync(t => t.SetProperty(t => t.IsDeleted, true));
+        var rowsSoftDeleted = await _dbContext.Tasks.Where(t => t.Id == taskId && (isAdmin || t.UserId == userId)).ExecuteUpdateAsync(t => t.SetProperty(t => t.IsDeleted, true)
+        .SetProperty(t => t.UpdatedAt, DateTime.UtcNow), ct);
 
         return rowsSoftDeleted > 0;
 
@@ -60,6 +61,7 @@ public class TaskRepository : ITaskRepository
             s => s.SetProperty(t => t.Title, task.Title)
         .SetProperty(t => t.Description, task.Description)
         .SetProperty(t => t.IsCompleted, task.IsCompleted)
+        .SetProperty(t => t.UpdatedAt, DateTime.UtcNow)
        , ct);
 
         if (rowsAffected == 0) return null;

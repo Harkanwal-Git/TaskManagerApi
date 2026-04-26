@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using TaskManagerApi.Data;
+using TaskManagerApi.Interceptors;
 using TaskManagerApi.Middleware;
 using TaskManagerApi.Repository;
 using TaskManagerApi.Service;
@@ -58,7 +59,7 @@ internal class Program
 
 
         builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")).AddInterceptors(new UpdatesAtInterceptor()));
 
         builder.Services.AddSingleton<IDataConnectionFactory, SQLConnectionFactory>();
 
