@@ -12,5 +12,7 @@ public class User : BaseEntity
     public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
 
     public ICollection<UserRole> Roles { get; set; } = new List<UserRole>();
+
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
 

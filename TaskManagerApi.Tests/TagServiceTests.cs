@@ -13,10 +13,14 @@ public class TagServiceTests
     private readonly Mock<ITagRepository> _mockTagRepository;
 
     private readonly ITagService _tagService;
+    private readonly Mock<ICacheRepository> _mockCacheRepository;
     public TagServiceTests()
     {
         _mockTagRepository = new();
-        _tagService = new TagService(_mockTagRepository.Object);
+        _mockCacheRepository = new();
+        _mockCacheRepository.Setup(c => c.InvalidateCacheKey(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                                   .Returns(Task.CompletedTask);
+        _tagService = new TagService(_mockTagRepository.Object, _mockCacheRepository.Object);
 
     }
 
@@ -34,6 +38,7 @@ public class TagServiceTests
                                 capturedTag = tag;
                             })
                             .ReturnsAsync((Tag tag, CancellationToken ct) => tag);
+
         // When
         string tagName = "test-tag";
 
@@ -74,14 +79,22 @@ public class TagServiceTests
         // Then
         Assert.False(result);
         _mockTagRepository.Verify(tr => tr.DeleteTag(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockCacheRepository.Verify(c => c.InvalidateCacheKey(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task GetTags_WhenEmpty_ReturnsEmptyIEnumerable()
+    public async Task GetTags_CacheMiss_WhenEmpty_ReturnsEmptyIEnumerable()
     {
         // Given
         _mockTagRepository.Setup(tr => tr.GetTags(It.IsAny<CancellationToken>()))
                                 .ReturnsAsync(new List<Tag>());
+        _mockCacheRepository
+    .Setup(c => c.GetOrSet<IEnumerable<ResponseTagDto>>(
+        It.IsAny<string>(),
+        It.IsAny<Func<CancellationToken, Task<IEnumerable<ResponseTagDto>>>>(),
+        It.IsAny<TimeSpan>(),
+        It.IsAny<CancellationToken>()))
+        .Returns<string, Func<CancellationToken, Task<IEnumerable<ResponseTagDto>>>, TimeSpan, CancellationToken>(async (key, factory, expiration, ct) => await factory(ct));
         // When
         var result = await _tagService.GetTags(CancellationToken.None);
         // Then
@@ -89,14 +102,25 @@ public class TagServiceTests
         Assert.Empty(result);
 
         _mockTagRepository.Verify(tr => tr.GetTags(It.IsAny<CancellationToken>()), Times.Once);
+        _mockCacheRepository.Verify(c => c.GetOrSet<IEnumerable<ResponseTagDto>>(
+        It.IsAny<string>(),
+        It.IsAny<Func<CancellationToken, Task<IEnumerable<ResponseTagDto>>>>(),
+        It.IsAny<TimeSpan>(),
+        It.IsAny<CancellationToken>()), Times.Once);
     }
-
     [Fact]
-    public async Task GetTags_ReturnsTagsList()
+    public async Task GetTags_CacheMiss_ReturnsTagsList()
     {
         // Given
         _mockTagRepository.Setup(tr => tr.GetTags(It.IsAny<CancellationToken>()))
                                 .ReturnsAsync(new List<Tag> { new Tag { TagName = "test tag1" }, new Tag { TagName = "test tag2" } });
+        _mockCacheRepository
+     .Setup(c => c.GetOrSet<IEnumerable<ResponseTagDto>>(
+         It.IsAny<string>(),
+         It.IsAny<Func<CancellationToken, Task<IEnumerable<ResponseTagDto>>>>(),
+         It.IsAny<TimeSpan>(),
+         It.IsAny<CancellationToken>()))
+         .Returns<string, Func<CancellationToken, Task<IEnumerable<ResponseTagDto>>>, TimeSpan, CancellationToken>(async (key, factory, expiration, ct) => await factory(ct));
         // When
         var result = await _tagService.GetTags(CancellationToken.None);
         // Then
@@ -104,7 +128,38 @@ public class TagServiceTests
         Assert.NotEmpty(result);
 
         _mockTagRepository.Verify(tr => tr.GetTags(It.IsAny<CancellationToken>()), Times.Once);
+        _mockCacheRepository.Verify(c => c.GetOrSet<IEnumerable<ResponseTagDto>>(
+         It.IsAny<string>(),
+         It.IsAny<Func<CancellationToken, Task<IEnumerable<ResponseTagDto>>>>(),
+         It.IsAny<TimeSpan>(),
+         It.IsAny<CancellationToken>()), Times.Once);
     }
+    [Fact]
+    public async Task GetTags_CacheHit_ReturnsTagsList()
+    {
+        // Given
+        _mockTagRepository.Setup(tr => tr.GetTags(It.IsAny<CancellationToken>()))
+                                .ReturnsAsync(new List<Tag> { new Tag { TagName = "test tag1" }, new Tag { TagName = "test tag2" } });
+        _mockCacheRepository.Setup(c => c.GetOrSet<IEnumerable<ResponseTagDto>>(
+                            It.IsAny<string>(),
+                            It.IsAny<Func<CancellationToken, Task<IEnumerable<ResponseTagDto>>>>(),
+                            It.IsAny<TimeSpan>(),
+                            It.IsAny<CancellationToken>()))
+                            .ReturnsAsync(new List<ResponseTagDto> { new ResponseTagDto(TagId: Guid.NewGuid(), TagName: "test-tag") });
+        // When
+        var result = await _tagService.GetTags(CancellationToken.None);
+        // Then
+        Assert.IsAssignableFrom<IEnumerable<ResponseTagDto>>(result);
+        Assert.NotEmpty(result);
+
+        _mockTagRepository.Verify(tr => tr.GetTags(It.IsAny<CancellationToken>()), Times.Never);
+        _mockCacheRepository.Verify(c => c.GetOrSet<IEnumerable<ResponseTagDto>>(
+                            It.IsAny<string>(),
+                            It.IsAny<Func<CancellationToken, Task<IEnumerable<ResponseTagDto>>>>(),
+                            It.IsAny<TimeSpan>(),
+                            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
 
     [Fact]
     public async Task GetTagsForTask_WhenTaskTagsExists_ReturnsTagsForTask()

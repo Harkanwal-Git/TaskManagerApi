@@ -44,6 +44,7 @@ public class ExceptionHandlingMiddleware
             InvalidCredentialsException => (401, "Invalid Credentials"),
             KeyNotFoundException => (404, "Not Found"),
             DuplicateEmailException => (409, "Email already exists"),
+            InvalidRefreshTokenException => (401, "Expired or revoked refresh token, try login"),
             DbUpdateException dbEx when dbEx.InnerException is SqlException sqlEx && sqlEx.Number == 547 => (400, "Invalid reference - related entity doesnot exist"),
             _ => (500, "Internal Server Error")
         };

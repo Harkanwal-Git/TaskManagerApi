@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Tag> Tags { get; set; }
 
     public DbSet<TaskTag> TaskTags { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -114,5 +115,15 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<TaskTag>()
                     .HasQueryFilter(tt => !tt.TaskItem.IsDeleted);
+
+        modelBuilder.Entity<RefreshToken>()
+        .HasOne(r => r.User)
+        .WithMany(u => u.RefreshTokens)
+        .HasForeignKey(r => r.UserId)
+        .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<RefreshToken>()
+        .HasIndex(r => r.Token)
+        .IsUnique();
     }
 }

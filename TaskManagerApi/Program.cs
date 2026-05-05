@@ -56,12 +56,29 @@ internal class Program
         builder.Services.AddScoped<ITagRepository, TagRepository>();
         builder.Services.AddScoped<ITagService, TagService>();
 
+        builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+
 
 
         builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")).AddInterceptors(new UpdatesAtInterceptor()));
 
         builder.Services.AddSingleton<IDataConnectionFactory, SQLConnectionFactory>();
+
+        var useRedis = builder.Configuration.GetValue<bool>("CacheSettings:UseRedis");
+        if (useRedis)
+        {
+            builder.Services.AddStackExchangeRedisCache(options =>
+            options.Configuration = builder.Configuration.GetConnectionString("Redis"));
+            builder.Services.AddSingleton<ICacheRepository, CacheRedisRepository>();
+        }
+        else
+        {
+            builder.Services.AddMemoryCache();
+            builder.Services.AddSingleton<ICacheRepository, CacheInMemoryRepository>();
+
+        }
 
         var app = builder.Build();
         app.UseSerilogRequestLogging();
