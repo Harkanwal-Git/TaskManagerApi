@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using TaskManagerApi.Model;
 
@@ -125,5 +126,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<RefreshToken>()
         .HasIndex(r => r.Token)
         .IsUnique();
+
+        // modelBuilder.Entity<User>()
+        //             .OwnsOne<Address>(u => u.Address);
     }
 }

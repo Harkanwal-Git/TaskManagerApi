@@ -14,5 +14,7 @@ public class User : BaseEntity
     public ICollection<UserRole> Roles { get; set; } = new List<UserRole>();
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    // public Address Address { get; set; } = null!;
 }
 
