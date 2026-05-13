@@ -16,6 +16,18 @@ public class CacheRedisRepository : ICacheRepository
         _redisCache = distributedCache;
     }
 
+    public async Task<T?> Get<T>(string key, CancellationToken ct)
+    {
+        var bytes = await _redisCache.GetAsync(key, ct);
+        if (bytes == null) return default;
+        return JsonSerializer.Deserialize<T>(bytes);
+    }
+
+    public async Task Set<T>(string key, T tValue, TimeSpan expiration, CancellationToken ct)
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(tValue);
+        await _redisCache.SetAsync(key, bytes, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = expiration }, ct);
+    }
     public async Task InvalidateCacheKey(string key, CancellationToken ct)
     {
         await _redisCache.RemoveAsync(key, ct);

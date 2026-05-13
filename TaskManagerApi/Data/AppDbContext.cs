@@ -22,6 +22,8 @@ public class AppDbContext : DbContext
     public DbSet<TaskTag> TaskTags { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
 
+    public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TaskItem>()

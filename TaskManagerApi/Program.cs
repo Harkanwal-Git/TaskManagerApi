@@ -58,6 +58,8 @@ internal class Program
 
         builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
+        builder.Services.AddScoped<IIdempotencyRecordRepository, IdempotencyRecordRepository>();
+
 
 
 
@@ -79,6 +81,7 @@ internal class Program
             builder.Services.AddSingleton<ICacheRepository, CacheInMemoryRepository>();
 
         }
+        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly));
 
         var app = builder.Build();
         app.UseSerilogRequestLogging();
@@ -94,6 +97,7 @@ internal class Program
         app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseIdempotencyMiddleware();
         app.MapControllers();
         app.Run();
     }

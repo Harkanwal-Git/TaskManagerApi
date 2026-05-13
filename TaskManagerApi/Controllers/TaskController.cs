@@ -1,6 +1,10 @@
 using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskManagerApi.Attributes;
+using TaskManagerApi.CQRS.Commands;
+using TaskManagerApi.CQRS.Queries;
 using TaskManagerApi.DTO;
 
 namespace TaskManagerApi.Controllers;
@@ -11,9 +15,11 @@ namespace TaskManagerApi.Controllers;
 public class TasksController : ControllerBase
 {
     private readonly ITaskService _taskService;
-    public TasksController(ITaskService service)
+    private readonly IMediator _mediator;
+    public TasksController(ITaskService service, IMediator mediator)
     {
         _taskService = service;
+        _mediator = mediator;
     }
 
     [HttpGet]
@@ -26,7 +32,8 @@ public class TasksController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ResponseTaskDto>> GetById(Guid id, CancellationToken ct)
     {
-        var result = await _taskService.GetTaskById(id, GetLoggedInUser(), User.IsInRole("Admin"), ct);
+        // var result = await _taskService.GetTaskById(id, GetLoggedInUser(), User.IsInRole("Admin"), ct);
+        var result = await _mediator.Send(new GetTaskByIdQuery(id, GetLoggedInUser(), User.IsInRole("Admin")), ct);
 
         if (result == null)
         {
@@ -35,10 +42,12 @@ public class TasksController : ControllerBase
         return Ok(result);
     }
 
+    [Idempotent]
     [HttpPost]
     public async Task<ActionResult<ResponseTaskDto>> AddTask([FromBody] CreateTaskDto taskRequest, CancellationToken ct)
     {
-        var responseTaskDto = await _taskService.AddTask(taskRequest, GetLoggedInUser(), User.IsInRole("Admin"), ct);
+        // var responseTaskDto = await _taskService.AddTask(taskRequest, GetLoggedInUser(), User.IsInRole("Admin"), ct);
+        var responseTaskDto = await _mediator.Send(new CreateTaskCommand(taskRequest, GetLoggedInUser(), User.IsInRole("Admin")), ct);
         return CreatedAtAction(nameof(GetById), new { id = responseTaskDto?.Id }, responseTaskDto);
 
 
