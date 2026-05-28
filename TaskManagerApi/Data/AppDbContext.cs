@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using TaskManagerApi.Model;
@@ -23,6 +24,9 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
+
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
+    public DbSet<ProcessedMessage> ProcessedMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -129,7 +133,12 @@ public class AppDbContext : DbContext
         .HasIndex(r => r.Token)
         .IsUnique();
 
+
         // modelBuilder.Entity<User>()
         //             .OwnsOne<Address>(u => u.Address);
+
+        // modelBuilder.ApplyConfiguration<OutboxMessage>(new OutboxMessageConfiguration());
+
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }

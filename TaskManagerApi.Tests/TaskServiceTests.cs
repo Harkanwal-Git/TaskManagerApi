@@ -25,8 +25,8 @@ public class TaskServiceTests
     public async Task AddTask_WithValidInputs_ReturnsCreatedTask()
     {
         CreateTaskDto createTaskDto = new(Title: "Test Task", Description: "Test Task Description");
-        _mockRepository.Setup(r => r.AddTask(It.IsAny<TaskItem>(), CancellationToken.None))
-                        .ReturnsAsync((TaskItem task, CancellationToken ct) => task
+        _mockRepository.Setup(r => r.AddTask(It.IsAny<TaskItem>(), It.IsAny<OutboxMessage>(), CancellationToken.None))
+                        .ReturnsAsync((TaskItem task, OutboxMessage outboxMessage, CancellationToken ct) => task
                     );
 
         var result = await _taskService.AddTask(createTaskDto, Guid.NewGuid(), false, CancellationToken.None);
@@ -34,22 +34,22 @@ public class TaskServiceTests
         Assert.NotNull(result);
         Assert.Equal(createTaskDto.Title, result.Title);
 
-        _mockRepository.Verify(s => s.AddTask(It.IsAny<TaskItem>(), CancellationToken.None), Times.Once);
+        _mockRepository.Verify(s => s.AddTask(It.IsAny<TaskItem>(), It.IsAny<OutboxMessage>(), CancellationToken.None), Times.Once);
     }
     [Fact]
     public async Task AddTask_AsAdmin_WithAssignedUserId_AssignsToSpecifiedUser()
     {
         Guid assignedUserId = Guid.NewGuid();
         CreateTaskDto createTaskDto = new(Title: "Test Task", Description: "Test Task Description", AssignedUserId: assignedUserId);
-        _mockRepository.Setup(r => r.AddTask(It.IsAny<TaskItem>(), CancellationToken.None))
-                        .ReturnsAsync((TaskItem task, CancellationToken ct) => task);
+        _mockRepository.Setup(r => r.AddTask(It.IsAny<TaskItem>(), It.IsAny<OutboxMessage>(), CancellationToken.None))
+                        .ReturnsAsync((TaskItem task, OutboxMessage outboxMessage, CancellationToken ct) => task);
 
         var result = await _taskService.AddTask(createTaskDto, Guid.NewGuid(), true, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(createTaskDto.Title, result.Title);
         Assert.Equal(assignedUserId, result.UserId);
-        _mockRepository.Verify(r => r.AddTask(It.IsAny<TaskItem>(), CancellationToken.None), Times.Once);
+        _mockRepository.Verify(r => r.AddTask(It.IsAny<TaskItem>(), It.IsAny<OutboxMessage>(), CancellationToken.None), Times.Once);
     }
     [Fact]
     public async Task AddTask_AsRegularUser_WithAssignedUserId_ThrowsUnauthorized()

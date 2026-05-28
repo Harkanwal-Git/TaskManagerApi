@@ -1,11 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using TaskManagerApi.Consumers;
 using TaskManagerApi.Data;
+using TaskManagerApi.EventPublisher;
 using TaskManagerApi.Interceptors;
 using TaskManagerApi.Middleware;
+using TaskManagerApi.OutboxWorker;
+using TaskManagerApi.Producers;
+using TaskManagerApi.Producers.EventPublisher;
 using TaskManagerApi.Repository;
 using TaskManagerApi.Service;
+using TaskManagerApi.Events;
 
 internal class Program
 {
@@ -60,9 +66,10 @@ internal class Program
 
         builder.Services.AddScoped<IIdempotencyRecordRepository, IdempotencyRecordRepository>();
 
+        builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
+        builder.Services.AddScoped<IProcessedMessageRepository, ProcessedMessageRepository>();
 
-
-
+        builder.Services.AddKeyedScoped<IEventPublisher, TaskCreatedEventPublisher>(EventType.TaskCreated);
         builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")).AddInterceptors(new UpdatesAtInterceptor()));
 
@@ -82,6 +89,11 @@ internal class Program
 
         }
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly));
+
+        builder.Services.AddSingleton<ITaskProducer, TaskProducer>();
+
+        builder.Services.AddHostedService<TaskConsumer>();
+        builder.Services.AddHostedService<OutboxWorker>();
 
         var app = builder.Build();
         app.UseSerilogRequestLogging();

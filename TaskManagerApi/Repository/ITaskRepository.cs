@@ -6,7 +6,7 @@ public interface ITaskRepository
 {
     public Task<IEnumerable<TaskItem>> GetAllTasks(Guid userId, bool isAdmin, CancellationToken ct);
     public Task<TaskItem?> GetTaskById(Guid Id, Guid userId, bool isAdmin, CancellationToken ct);
-    public Task<TaskItem> AddTask(TaskItem task, CancellationToken ct);
+    public Task<TaskItem> AddTask(TaskItem task, OutboxMessage outboxMessage, CancellationToken ct);
 
     public Task<TaskItem?> UpdateTask(TaskItem task, bool isAdmin, CancellationToken ct);
 

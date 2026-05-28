@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using TaskManagerApi.DTO;
 using TaskManagerApi.Model;
 using TaskManagerApi.Repository;
@@ -24,7 +25,7 @@ public class TaskService : ITaskService
         }
         ResponseTaskDto responseTaskDto;
         var taskAssignee = isAdmin && createTaskDto.AssignedUserId.HasValue ? createTaskDto.AssignedUserId.Value : userId;
-        TaskItem taskItem = await _taskRepository.AddTask(MapCreateRequestDtoToTaskItem(createTaskDto, taskAssignee), ct);
+        TaskItem taskItem = await _taskRepository.AddTask(MapCreateRequestDtoToTaskItem(createTaskDto, taskAssignee), new OutboxMessage() { Payload = "" }, ct);
         _logger.LogInformation("User: {UserId} added task for user: {TaskAssignee}", userId, taskAssignee);
         responseTaskDto = MapTaskItemToResponseDto(taskItem);
         return responseTaskDto;

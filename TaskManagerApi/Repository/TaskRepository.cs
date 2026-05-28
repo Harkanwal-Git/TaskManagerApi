@@ -17,11 +17,25 @@ public class TaskRepository : ITaskRepository
         this._connectionFactory = dataConnectionFactory;
     }
 
-    public async Task<TaskItem> AddTask(TaskItem task, CancellationToken ct)
+    public async Task<TaskItem> AddTask(TaskItem task, OutboxMessage outboxMessage, CancellationToken ct)
     {
-
+        // using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
+        // try
+        // {
         _dbContext.Tasks.Add(task);
+
+        _dbContext.OutboxMessages.Add(outboxMessage);
+
+
         await _dbContext.SaveChangesAsync(ct);
+        // await transaction.CommitAsync(ct);
+        // }
+        // catch
+        // {
+        //     await transaction.RollbackAsync(ct);
+        //     throw;
+        // }
+
 
         return task;
     }

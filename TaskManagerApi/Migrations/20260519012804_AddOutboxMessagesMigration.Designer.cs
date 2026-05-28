@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskManagerApi.Data;
 
@@ -11,9 +12,11 @@ using TaskManagerApi.Data;
 namespace TaskManagerApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260519012804_AddOutboxMessagesMigration")]
+    partial class AddOutboxMessagesMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -69,9 +72,6 @@ namespace TaskManagerApi.Migrations
                     b.Property<bool>("IsPublished")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsStalled")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Payload")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -90,22 +90,6 @@ namespace TaskManagerApi.Migrations
                     b.HasIndex("IsPublished");
 
                     b.ToTable("OutboxMessages");
-                });
-
-            modelBuilder.Entity("TaskManagerApi.Model.ProcessedMessage", b =>
-                {
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ConsumerGroup")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime>("ProcessedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("TaskId", "ConsumerGroup");
-
-                    b.ToTable("ProcessedMessages");
                 });
 
             modelBuilder.Entity("TaskManagerApi.Model.RefreshToken", b =>

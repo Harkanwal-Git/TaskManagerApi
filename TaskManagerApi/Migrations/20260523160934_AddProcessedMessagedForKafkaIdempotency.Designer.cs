@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskManagerApi.Data;
 
@@ -11,9 +12,11 @@ using TaskManagerApi.Data;
 namespace TaskManagerApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260523160934_AddProcessedMessagedForKafkaIdempotency")]
+    partial class AddProcessedMessagedForKafkaIdempotency
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -100,7 +103,7 @@ namespace TaskManagerApi.Migrations
                     b.Property<string>("ConsumerGroup")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<DateTime>("ProcessedAt")
+                    b.Property<DateTime>("processedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("TaskId", "ConsumerGroup");
