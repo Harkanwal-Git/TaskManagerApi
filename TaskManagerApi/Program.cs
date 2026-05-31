@@ -12,6 +12,7 @@ using TaskManagerApi.Producers.EventPublisher;
 using TaskManagerApi.Repository;
 using TaskManagerApi.Service;
 using TaskManagerApi.Events;
+using Confluent.SchemaRegistry;
 
 internal class Program
 {
@@ -89,6 +90,11 @@ internal class Program
 
         }
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly));
+
+        builder.Services.AddSingleton<ISchemaRegistryClient>(new CachedSchemaRegistryClient(new SchemaRegistryConfig
+        {
+            Url = builder.Configuration["SchemaRegistry:Url"]
+        }));
 
         builder.Services.AddSingleton<ITaskProducer, TaskProducer>();
 

@@ -1,7 +1,5 @@
-using System.Transactions;
 using Dapper;
 using TaskManagerApi.Data;
-using TaskManagerApi.Events;
 using TaskManagerApi.Model;
 
 namespace TaskManagerApi.Repository;

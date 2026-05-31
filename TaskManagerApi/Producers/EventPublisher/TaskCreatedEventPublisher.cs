@@ -1,7 +1,8 @@
 using System.Text.Json;
+using taskmanager.events;
 using TaskManagerApi.EventPublisher;
-using TaskManagerApi.Events;
 using TaskManagerApi.Producers.Events;
+
 
 namespace TaskManagerApi.Producers.EventPublisher;
 
@@ -16,7 +17,16 @@ public class TaskCreatedEventPublisher : IEventPublisher
     public async Task PublishAsync(string payload, CancellationToken ct)
     {
 
-        var taskCreatedEvent = JsonSerializer.Deserialize<TaskCreatedEvent>(payload);
-        await _taskProducer.PublishTaskCreatedAsync(taskCreatedEvent!, ct);
+        var taskCreatedEventDto = JsonSerializer.Deserialize<TaskCreatedEventDto>(payload) ?? throw new JsonException("Null returned on deserialization");
+        var taskCreatedEvent = new TaskCreatedEvent()
+        {
+            taskId = taskCreatedEventDto.TaskId.ToString(),
+            userId = taskCreatedEventDto.UserId.ToString(),
+            title = taskCreatedEventDto.Title,
+            description = taskCreatedEventDto.Description,
+            occuredAt = taskCreatedEventDto.OccurredAt,
+            isCompleted = taskCreatedEventDto.IsCompleted
+        };
+        await _taskProducer.PublishTaskCreatedAsync(taskCreatedEvent, ct);
     }
 }

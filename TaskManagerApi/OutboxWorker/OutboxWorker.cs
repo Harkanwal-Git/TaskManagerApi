@@ -51,10 +51,16 @@ public class OutboxWorker : BackgroundService
 
                         var updatedRows = await outboxRepository.UpdateOutboxMessageAsync(message, stoppingToken);
                     }
-                    catch (KafkaException)
+                    catch (JsonException ex)
+                    {
+                        message.IsStalled = true;
+                        _logger.LogError(ex, "JSON exception failure processing outbox message {Id}", message.Id);
+                        await outboxRepository.UpdateOutboxMessageAsync(message, stoppingToken);
+                    }
+                    catch (KafkaException ex)
                     {
                         message.IsStalled = message.RetryCount > MaxRetries;
-                        _logger.LogWarning("Unsuccessful re-publsih attempt : {retryCount} for Record: {unPublishedRecord} at {time}", message.RetryCount, message.Id, DateTime.UtcNow);
+                        _logger.LogWarning("Unsuccessful re-publsih attempt : {retryCount} for Record: {unPublishedRecord} at {time}: Exception {exception}", message.RetryCount, message.Id, DateTime.UtcNow, ex.Message);
                         var updatedRows = await outboxRepository.UpdateOutboxMessageAsync(message, stoppingToken);
                     }
                     catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)

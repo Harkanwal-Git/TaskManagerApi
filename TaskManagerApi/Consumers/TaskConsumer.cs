@@ -1,9 +1,14 @@
 
+using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
+using Confluent.Kafka.SyncOverAsync;
+using Confluent.SchemaRegistry;
+using Confluent.SchemaRegistry.Serdes;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
+using taskmanager.events;
 using TaskManagerApi.Data;
 using TaskManagerApi.Model;
 using TaskManagerApi.Producers.Events;
@@ -20,13 +25,16 @@ public class TaskConsumer : BackgroundService
 
     private readonly ProducerConfig _producerConfig;
 
+    private readonly ISchemaRegistryClient _schemaRegistryClient;
+
 
     private readonly int _concurrentConsumption;
 
-    public TaskConsumer(ILogger<TaskConsumer> logger, IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, ICacheRepository cacheRepository)
+    public TaskConsumer(ILogger<TaskConsumer> logger, IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, ICacheRepository cacheRepository, ISchemaRegistryClient schemaRegistryClient)
     {
         _logger = logger;
         _serviceScopeFactory = serviceScopeFactory;
+        _schemaRegistryClient = schemaRegistryClient;
         _consumerConfig = new ConsumerConfig()
         {
             BootstrapServers = configuration["Kafka:BootstrapServers"],
@@ -56,9 +64,9 @@ public class TaskConsumer : BackgroundService
                     tasks.Add(Task.Run(async () =>
                      {
 
-                         using var consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build();
+                         using var consumer = new ConsumerBuilder<string, TaskCreatedEvent>(_consumerConfig).SetValueDeserializer(new AvroDeserializer<TaskCreatedEvent>(_schemaRegistryClient).AsSyncOverAsync()).Build();
                          consumer.Subscribe("task.created");
-                         var dltProducer = new ProducerBuilder<string, string>(_producerConfig).Build();
+                         var dltProducer = new ProducerBuilder<string, byte[]>(_producerConfig).Build();
                          try
                          {
                              while (!stoppingToken.IsCancellationRequested)
@@ -70,8 +78,9 @@ public class TaskConsumer : BackgroundService
                                  var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                                  try
                                  {
-                                     var message = JsonSerializer.Deserialize<TaskCreatedEvent>(result.Message.Value);
-                                     var taskId = message!.TaskId;
+                                     //var message = JsonSerializer.Deserialize<TaskCreatedEvent>(result.Message.Value);
+                                     var message = result.Message.Value;
+                                     Guid.TryParse(message!.taskId, out var taskId);
                                      var alreadyProcessedEvent = await _cacheRepository.Get<bool?>($"TaskCreatedEvent:{taskId}", stoppingToken) ?? false;
                                      if (alreadyProcessedEvent) continue;
                                      else
@@ -98,7 +107,13 @@ public class TaskConsumer : BackgroundService
                                              retryCount++;
                                              if (retryCount >= maxRetry)
                                              {
-                                                 await dltProducer.ProduceAsync("DLT.task.created", message: result.Message, stoppingToken);
+                                                 var bytes = JsonSerializer.SerializeToUtf8Bytes(result.Message.Value);
+
+                                                 await dltProducer.ProduceAsync("DLT.task.created", message: new Message<string, byte[]>
+                                                 {
+                                                     Key = result.Message.Key,
+                                                     Value = bytes
+                                                 }, stoppingToken);
                                                  consumer.Commit(result);
                                                  break;
                                              }
@@ -109,14 +124,21 @@ public class TaskConsumer : BackgroundService
                                          }
                                      }
                                  }
-                                 catch (JsonException jex)
-                                 {
-                                     _logger.LogError("Kafka message deserialization exception");
-                                     await dltProducer.ProduceAsync("DLT.task.created", message: result.Message, stoppingToken);
-                                     consumer.Commit(result);
-                                 }
+                                 //  catch (JsonException jex)
+                                 //  {
+                                 //      _logger.LogError("Kafka message deserialization exception");
+                                 //      await dltProducer.ProduceAsync("DLT.task.created", message: result.Message, stoppingToken);
+                                 //      consumer.Commit(result);
+                                 //  }
                                  catch (ConsumeException ex)
                                  {
+                                     if (ex.InnerException is SchemaRegistryException)
+                                     {
+                                         await dltProducer.ProduceAsync("DLT.task.created", message: new Message<string, byte[]>
+                                         { Key = Encoding.UTF8.GetString(ex.ConsumerRecord.Message.Key), Value = ex.ConsumerRecord.Message.Value }
+                                         , stoppingToken);
+                                         consumer.Commit(result);
+                                     }
                                      _logger.LogError("Error while reading message from Kafka:Error: {error} StackTrace: {stackTracke}", ex.Message, ex.StackTrace);
                                  }
                              }
@@ -136,7 +158,7 @@ public class TaskConsumer : BackgroundService
             }
     }
 
-    private async Task ProcessMessageAsync(IProcessedMessageRepository processedMessageRepo, AppDbContext dbContext, IConsumer<string, string> consumer, ConsumeResult<string, string> result, Guid taskId, CancellationToken stoppingToken)
+    private async Task ProcessMessageAsync(IProcessedMessageRepository processedMessageRepo, AppDbContext dbContext, IConsumer<string, TaskCreatedEvent> consumer, ConsumeResult<string, TaskCreatedEvent> result, Guid taskId, CancellationToken stoppingToken)
     {
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(stoppingToken);

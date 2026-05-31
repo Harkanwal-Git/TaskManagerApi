@@ -1,4 +1,5 @@
-using TaskManagerApi.Producers.Events;
+using taskmanager.events;
+
 
 namespace TaskManagerApi.Producers;
 

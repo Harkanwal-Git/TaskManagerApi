@@ -26,7 +26,7 @@ public class CreateTaskHandler : IRequestHandler<CreateTaskCommand, ResponseTask
         }
         var taskAssignee = request.CreateTaskDto.AssignedUserId.HasValue && request.IsAdmin ? request.CreateTaskDto.AssignedUserId.Value : request.userId;
         TaskItem task = new TaskItem() { Title = request.CreateTaskDto.Title, Description = request.CreateTaskDto.Description, UserId = taskAssignee };
-        var taskCreated = new TaskCreatedEvent
+        var taskCreated = new TaskCreatedEventDto
         {
             TaskId = task.Id,
             Title = task.Title,

@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "TaskCreatedEvent",
+  "namespace": "taskmanager.events",
+  "fields": [
+    { "name": "taskId", "type": "string" },
+    { "name": "userId", "type": "string" },
+    { "name": "title", "type": "string" },
+    { "name": "description", "type": ["null", "string"], "default": null },
+    { "name": "isCompleted", "type": "boolean" },
+    {
+      "name": "occuredAt",
+      "type": { "type": "long", "logicalType": "timestamp-millis" }
+    },
+    { "name": "priority", "type": ["null", "int"], "default": null }
+  ]
+}

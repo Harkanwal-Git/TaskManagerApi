@@ -1,6 +1,6 @@
 namespace TaskManagerApi.Producers.Events;
 
-public class TaskCreatedEvent
+public class TaskCreatedEventDto
 {
     public Guid TaskId { get; set; }
     public Guid UserId { get; set; }
